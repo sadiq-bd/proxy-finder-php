@@ -1,4 +1,13 @@
 <?php
+foreach ($argv as $arg) {
+    $e=explode("=",$arg);
+    if(count($e)==2)
+        $_GET[$e[0]]=$e[1];
+    else   
+        $_GET[$e[0]]=0;
+}
+
+$limit = isset($_GET['limit']) ? intval($_GET['limit']) : 100;
 
 $cli_green = "\033[1;92m";
 $cli_red = "\033[1;91m";
@@ -51,7 +60,7 @@ function fetch(string $url, array $post = [], array $headers = [], string $proxy
 }
 
 
-$proxyList = file_get_contents('https://proxylist.geonode.com/api/proxy-list?limit=200&page=1&sort_by=lastChecked&sort_type=desc');
+$proxyList = file_get_contents('https://proxylist.geonode.com/api/proxy-list?limit='.$limit.'&page=1&sort_by=lastChecked&sort_type=desc');
 
 $proxyList = json_decode($proxyList, true)['data'];
 
