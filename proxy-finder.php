@@ -9,6 +9,7 @@ foreach ($argv as $arg) {
 
 $country = isset($_GET['country']) ? $_GET['country'] : 'US';
 $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 100;
+$loop = isset($_GET['loop']) ? boolval($_GET['loop']) : false;
 
 $cli_green = "\033[1;92m";
 $cli_red = "\033[1;91m";
@@ -60,40 +61,42 @@ function fetch(string $url, array $post = [], array $headers = [], string $proxy
     return $obj;
 }
 
+do {
 
-$proxyList = file_get_contents('https://proxylist.geonode.com/api/proxy-list?limit='.$limit.'&page=1&sort_by=lastChecked&country='.$country.'&sort_type=desc');
+    $proxyList = file_get_contents('https://proxylist.geonode.com/api/proxy-list?limit='.$limit.'&page=1&sort_by=lastChecked&country='.$country.'&sort_type=desc');
 
-$proxyList = json_decode($proxyList, true)['data'];
+    $proxyList = json_decode($proxyList, true)['data'];
 
-$proxyOkList = [];
+    $proxyOkList = [];
 
-foreach ($proxyList as $proxy) {
+    foreach ($proxyList as $proxy) {
 
-    $proxyUrl = $proxy['protocols'][0] . '://' . $proxy['ip'] . ':' . $proxy['port'];
-    if ($fetch = fetch(
-        'https://www.google.com/',
-        [],
-        [],
-        $proxyUrl)) {
-        if (strlen($fetch->error) < 1) {
-            $proxyOkList[] = $proxyUrl;
-            echo $cli_green . "\nProxy OK " . $proxyUrl . "\n";
-        } else {
-            echo $cli_red . "\nProxy Error [".$proxyUrl."]: " . $fetch->error . "\n";
+        $proxyUrl = $proxy['protocols'][0] . '://' . $proxy['ip'] . ':' . $proxy['port'];
+        if ($fetch = fetch(
+            'https://www.google.com/',
+            [],
+            [],
+            $proxyUrl)) {
+            if (strlen($fetch->error) < 1) {
+                $proxyOkList[] = $proxyUrl;
+                echo $cli_green . "\nProxy OK " . $proxyUrl . "\n";
+            } else {
+                echo $cli_red . "\nProxy Error [".$proxyUrl."]: " . $fetch->error . "\n";
+            }
         }
+
     }
 
-}
+    if (count($proxyOkList) > 0) {
+        $proxyOkListJson = json_encode($proxyOkList);
 
-if (count($proxyOkList) > 0) {
-    $proxyOkListJson = json_encode($proxyOkList);
+        $file = fopen($fname = __DIR__ . '/proxy_list_' . uniqid() . '.json', 'w+');
+        fwrite($file, $proxyOkListJson);
+        fclose($file);
+        echo $cli_green . "\n\n".count($proxyOkList)." workable proxy found \n\n";
+        echo $cli_green . "\n\nProxy List File: " . $fname . "\n\n";
+    } else {
+        echo $cli_red . "\n\nNo workable proxy found \n\n";
+    }
 
-    $file = fopen($fname = __DIR__ . '/proxy_list_' . uniqid() . '.json', 'w+');
-    fwrite($file, $proxyOkListJson);
-    fclose($file);
-    echo $cli_green . "\n\n".count($proxyOkList)." workable proxy found \n\n";
-    echo $cli_green . "\n\nProxy List File: " . $fname . "\n\n";
-} else {
-    echo $cli_red . "\n\nNo workable proxy found \n\n";
-}
-
+} while ($loop);
